@@ -13,8 +13,8 @@ WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK")
 # Example value: <@&123456789012345678>
 ROLE_PING = os.getenv("ROLE_PING", "").strip()
 
-AMD_LOGO = "https://upload.wikimedia.org/wikipedia/commons/7/7c/AMD_Logo.svg"
-FOOTER_TEXT = "Subho's AMDGaming Notifier"
+AMD_LOGO = "https://files.catbox.moe/wl4l9q.png"
+FOOTER_TEXT = "Subho's AMD Gaming Notifier"
 
 
 def load_state():
@@ -138,7 +138,7 @@ def send_discord(item, reason):
         "color": color,
         "footer": {
             "text": FOOTER_TEXT,
-            "icon_url": AMD_LOGO,
+            "icon_url": "https://files.catbox.moe/qttqpy.png",
         },
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
