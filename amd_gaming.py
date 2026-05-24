@@ -61,10 +61,9 @@ def get_status(keys, status):
         return "✅", 0x2ecc71
 
     if status == "active" and keys <= 0:
-        return "❌", 0xe67e22
+        return "❌", 0xed4245
 
-    return "🔴", 0xe74c3c
-
+    return "🔴", 0x992d22
 
 def should_post(item, old):
     keys = int(item.get("keysAvailable") or 0)
@@ -110,21 +109,36 @@ def send_discord(item, reason):
 
     desc = f"{status_emoji} 🎮 {platform} 🔑 {keys}"
 
-    embed = {
-        "author": {
-            "name": "AMDGaming - Promotions",
-            "icon_url": AMD_LOGO,
+   embed = {
+    "author": {
+        "name": "AMDGaming - Promotions",
+        "icon_url": AMD_LOGO,
+    },
+    "title": title,
+    "url": url,
+    "color": color,
+    "fields": [
+        {
+            "name": "Status",
+            "value": status_emoji,
+            "inline": True
         },
-        "title": title,
-        "url": url,
-        "description": desc,
-        "color": color,
-        "footer": {
-            "text": FOOTER_TEXT,
-            "icon_url": "https://files.catbox.moe/qttqpy.png",
+        {
+            "name": "Platform",
+            "value": platform,
+            "inline": True
+        },
+        {
+            "name": "Keys",
+            "value": str(keys),
+            "inline": True
         }
+    ],
+    "footer": {
+        "text": FOOTER_TEXT,
+        "icon_url": "https://files.catbox.moe/qttqpy.png",
     }
-
+}
     if image:
         embed["image"] = {"url": image}
 
