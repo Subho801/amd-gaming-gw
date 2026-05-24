@@ -14,7 +14,7 @@ WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK")
 ROLE_PING = os.getenv("ROLE_PING", "").strip()
 
 AMD_LOGO = "https://files.catbox.moe/pewooo.png"
-FOOTER_TEXT = "Subho's AMD Gaming Notifier"
+FOOTER_TEXT = "Subho's AMD Gaming Informer"
 
 
 def load_state():
