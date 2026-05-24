@@ -13,7 +13,7 @@ WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK")
 # Example value: <@&123456789012345678>
 ROLE_PING = os.getenv("ROLE_PING", "").strip()
 
-AMD_LOGO = "https://files.catbox.moe/wl4l9q.png"
+AMD_LOGO = "https://files.catbox.moe/scvfz0.jpg"
 FOOTER_TEXT = "Subho's AMD Gaming Notifier"
 
 
@@ -58,12 +58,12 @@ def get_status(keys, status):
     status = str(status or "").lower()
 
     if status == "active" and keys > 0:
-        return "AVAILABLE", "✅", 0x2ecc71
+        return "✅", 0x2ecc71
 
     if status == "active" and keys <= 0:
-        return "OUT OF KEYS", "❌", 0xe67e22
+        return "❌", 0xe67e22
 
-    return "ENDED", "🔴", 0xe74c3c
+    return "🔴", 0xe74c3c
 
 
 def should_post(item, old):
@@ -103,27 +103,12 @@ def send_discord(item, reason):
     image = item.get("thumbnailImageUrl")
     platform = item.get("platform", "Unknown")
     keys = int(item.get("keysAvailable") or 0)
-    created = item.get("createdAt", 0)
-    tags = item.get("tags", "")
 
-    status_text, status_emoji, color = get_status(keys, item.get("status"))
+    status_emoji, color = get_status(keys, item.get("status"))
 
     url = f"https://www.amdgaming.com/promotions/{slug}"
 
-    if reason == "restock":
-        headline = "🔁 Keys Restocked"
-    elif reason == "out_of_keys":
-        headline = "⚠️ Out of Keys"
-    elif reason == "ended":
-        headline = "Promotion Ended"
-    else:
-        headline = "New AMD Gaming Giveaway"
-
-    desc = (
-    f"{status_emoji} **{status_text}**\n"
-    f"🎮 **{platform}**\n"
-    f"🔑 **Keys Left:** `{keys}`"
-)
+    desc = f"{status_emoji} 🎮 {platform} 🔑 {keys}"
 
     embed = {
         "author": {
@@ -137,8 +122,7 @@ def send_discord(item, reason):
         "footer": {
             "text": FOOTER_TEXT,
             "icon_url": "https://files.catbox.moe/qttqpy.png",
-        },
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
     }
 
     if image:
@@ -171,7 +155,6 @@ def send_discord(item, reason):
         print(r.text[:300])
 
     time.sleep(1.5)
-
 
 def main():
     if not WEBHOOK_URL:
