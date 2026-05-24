@@ -58,10 +58,10 @@ def get_status(keys, status):
     status = str(status or "").lower()
 
     if status == "active" and keys > 0:
-        return "AVAILABLE", "🟢", 0x2ecc71
+        return "AVAILABLE", "✅", 0x2ecc71
 
     if status == "active" and keys <= 0:
-        return "OUT OF KEYS", "🟠", 0xf39c12
+        return "OUT OF KEYS", "❌", 0xe67e22
 
     return "ENDED", "🔴", 0xe74c3c
 
@@ -120,12 +120,10 @@ def send_discord(item, reason):
         headline = "New AMD Gaming Giveaway"
 
     desc = (
-        f"🏷️ `{tags or 'giveaway'}`\n\n"
-        f"{status_emoji} **{status_text}**\n"
-        f"🎮 **{platform}**\n"
-        f"🔑 **Keys Left:** `{keys}`\n"
-        f"🕒 **Published:** {discord_timestamp(created)}"
-    )
+    f"{status_emoji} **{status_text}**\n"
+    f"🎮 **{platform}**\n"
+    f"🔑 **Keys Left:** `{keys}`"
+)
 
     embed = {
         "author": {
