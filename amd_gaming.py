@@ -2,15 +2,18 @@ import os
 import re
 import json
 import requests
-from datetime import datetime
-from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright
+from datetime import datetime, timezone
 
-URL = "https://www.amdgaming.com/promotions"
+BASE = "https://www.amdgaming.com"
 SEEN_FILE = "seen_amd.json"
 WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK")
 
-AMD_LOGO = "https://upload.wikimedia.org/wikipedia/commons/7/7c/AMD_Logo.svg"
+AMD_ICON = "https://www.amdgaming.com/uploads/default/original/1X/9f86b0f0a4d4c8f3c4e6b4c9e6e6a6f6.png"
+
+HEADERS = {
+    "User-Agent": "Mozilla/5.0",
+    "Accept": "application/json, text/plain, */*",
+}
 
 
 def load_seen():
@@ -22,157 +25,155 @@ def load_seen():
 
 def save_seen(seen):
     with open(SEEN_FILE, "w", encoding="utf-8") as f:
-        json.dump(sorted(list(seen)), f, indent=2)
+        json.dump(sorted(seen), f, indent=2)
 
 
-def clean_text(text):
+def clean(text):
     return re.sub(r"\s+", " ", text or "").strip()
 
 
-def fetch_page():
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page(
-            viewport={"width": 1600, "height": 1200},
-            user_agent="Mozilla/5.0"
-        )
-
-        page.goto(URL, wait_until="networkidle", timeout=60000)
-        page.wait_for_timeout(4000)
-
-        html = page.content()
-        browser.close()
-        return html
+def get_json(url):
+    try:
+        r = requests.get(url, headers=HEADERS, timeout=30)
+        print(url, r.status_code)
+        if r.status_code == 200:
+            return r.json()
+    except Exception as e:
+        print("JSON fetch failed:", url, e)
+    return None
 
 
-def extract_promotions(html):
-    soup = BeautifulSoup(html, "html.parser")
+def absolute_url(url):
+    if not url:
+        return None
+    if url.startswith("http"):
+        return url
+    return BASE + url
+
+
+def fetch_promotions():
     promos = []
 
-    text_blocks = soup.find_all(["tr", "li", "div", "article"])
+    endpoints = [
+        f"{BASE}/latest.json",
+        f"{BASE}/search.json?q=giveaway",
+        f"{BASE}/search.json?q=promotion",
+    ]
 
-    for block in text_blocks:
-        text = clean_text(block.get_text(" "))
-
-        if not text:
+    for endpoint in endpoints:
+        data = get_json(endpoint)
+        if not data:
             continue
 
-        if "Giveaway" not in text:
-            continue
+        topics = []
 
-        title_match = re.search(r"(.+?Giveaway)", text, re.I)
-        if not title_match:
-            continue
+        if "topic_list" in data:
+            topics.extend(data["topic_list"].get("topics", []))
 
-        title = clean_text(title_match.group(1))
+        if "topics" in data:
+            topics.extend(data.get("topics", []))
 
-        if len(title) < 5:
-            continue
+        for topic in topics:
+            title = clean(topic.get("title"))
+            if not title:
+                continue
 
-        status = "UNKNOWN"
-        if "Ended!" in text or "Ended" in text:
-            status = "ENDED"
-        else:
-            status = "AVAILABLE"
+            lower = title.lower()
 
-        published = "Unknown"
-        date_match = re.search(r"\b\d{2}\.\d{2}\.\d{4}\b", text)
-        if date_match:
-            published = date_match.group(0)
+            if "giveaway" not in lower and "promotion" not in lower and "reward" not in lower:
+                continue
 
-        img = None
-        image_tag = block.find("img")
-        if image_tag:
-            img = image_tag.get("src") or image_tag.get("data-src")
+            slug = topic.get("slug")
+            topic_id = topic.get("id")
 
-        if img and img.startswith("/"):
-            img = "https://www.amdgaming.com" + img
+            if not slug or not topic_id:
+                continue
 
-        link = URL
-        a = block.find("a", href=True)
-        if a:
-            href = a["href"]
-            if href.startswith("/"):
-                link = "https://www.amdgaming.com" + href
-            elif href.startswith("http"):
-                link = href
+            link = f"{BASE}/t/{slug}/{topic_id}"
 
-        promo_id = re.sub(r"[^a-zA-Z0-9]+", "-", title.lower()).strip("-")
+            image = None
+            if topic.get("image_url"):
+                image = absolute_url(topic["image_url"])
+            elif topic.get("thumbnails"):
+                thumbs = topic.get("thumbnails") or []
+                if thumbs:
+                    image = absolute_url(thumbs[-1].get("url"))
 
-        promos.append({
-            "id": promo_id,
-            "title": title,
-            "status": status,
-            "published": published,
-            "image": img,
-            "link": link
-        })
+            created_at = topic.get("created_at")
+            unix_time = None
+            if created_at:
+                try:
+                    dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                    unix_time = int(dt.timestamp())
+                except Exception:
+                    pass
+
+            promos.append({
+                "id": str(topic_id),
+                "title": title,
+                "link": link,
+                "image": image,
+                "created_unix": unix_time,
+            })
 
     unique = {}
-    for promo in promos:
-        unique[promo["id"]] = promo
+    for p in promos:
+        unique[p["id"]] = p
 
     return list(unique.values())
 
 
 def send_discord(promo):
     if not WEBHOOK_URL:
-        print("DISCORD_WEBHOOK not set")
+        print("DISCORD_WEBHOOK missing")
         return
 
-    color = 0x00c8ff if promo["status"] == "AVAILABLE" else 0x777777
+    published = "Unknown"
+    if promo["created_unix"]:
+        published = f"<t:{promo['created_unix']}:F>"
 
     embed = {
         "author": {
             "name": "AMD Gaming Giveaway",
-            "icon_url": AMD_LOGO
         },
         "title": promo["title"],
         "url": promo["link"],
-        "color": color,
+        "color": 0x00D8FF,
         "fields": [
             {
                 "name": "Status",
-                "value": "🟢 AVAILABLE" if promo["status"] == "AVAILABLE" else "🔴 ENDED",
+                "value": "🟢 AVAILABLE / NEW",
                 "inline": True
             },
             {
                 "name": "Published",
-                "value": promo["published"],
+                "value": published,
                 "inline": True
             }
         ],
         "footer": {
             "text": "AMD Gaming Notifier"
         },
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
     if promo["image"]:
         embed["image"] = {"url": promo["image"]}
 
-    payload = {"embeds": [embed]}
-
-    r = requests.post(WEBHOOK_URL, json=payload, timeout=20)
+    r = requests.post(WEBHOOK_URL, json={"embeds": [embed]}, timeout=30)
     print("Discord:", r.status_code, r.text[:200])
 
 
 def main():
     seen = load_seen()
+    promos = fetch_promotions()
 
-    print("Fetching AMD Gaming promotions...")
-    html = fetch_page()
-
-    promos = extract_promotions(html)
-    print(f"Found {len(promos)} giveaways")
+    print(f"Found {len(promos)} AMD giveaway/promotion posts")
 
     new_seen = set(seen)
 
     for promo in promos:
-        print(promo["title"], "-", promo["status"])
-
-        if promo["status"] == "ENDED":
-            continue
+        print("-", promo["title"])
 
         if promo["id"] in seen:
             continue
