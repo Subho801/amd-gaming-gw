@@ -28,13 +28,17 @@ jobs:
       - name: Run AMD notifier
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          ROLE_PING: ${{ secrets.ROLE_PING }}
         run: python amd_gaming.py
 
-      - name: Save seen file
+      - name: Save state file
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add seen_amd.json
-          git commit -m "Update AMD seen giveaways" || echo "No changes"
+
+          git add amd_state.json
+
+          git commit -m "Update AMD giveaway state" || echo "No changes"
+
           git pull --rebase
           git push
