@@ -107,38 +107,37 @@ def send_discord(item, reason):
 
     url = f"https://www.amdgaming.com/promotions/{slug}"
 
-    desc = f"{status_emoji} 🎮 {platform} 🔑 {keys}"
-
-   embed = {
-    "author": {
-        "name": "AMDGaming - Promotions",
-        "icon_url": AMD_LOGO,
-    },
-    "title": title,
-    "url": url,
-    "color": color,
-    "fields": [
-        {
-            "name": "Status",
-            "value": status_emoji,
-            "inline": True
+    embed = {
+        "author": {
+            "name": "AMDGaming - Promotions",
+            "icon_url": AMD_LOGO,
         },
-        {
-            "name": "Platform",
-            "value": platform,
-            "inline": True
-        },
-        {
-            "name": "Keys",
-            "value": str(keys),
-            "inline": True
+        "title": title,
+        "url": url,
+        "color": color,
+        "fields": [
+            {
+                "name": "Status",
+                "value": status_emoji,
+                "inline": True
+            },
+            {
+                "name": "Platform",
+                "value": platform,
+                "inline": True
+            },
+            {
+                "name": "Keys",
+                "value": str(keys),
+                "inline": True
+            }
+        ],
+        "footer": {
+            "text": FOOTER_TEXT,
+            "icon_url": "https://files.catbox.moe/qttqpy.png",
         }
-    ],
-    "footer": {
-        "text": FOOTER_TEXT,
-        "icon_url": "https://files.catbox.moe/qttqpy.png",
     }
-}
+
     if image:
         embed["image"] = {"url": image}
 
@@ -169,7 +168,7 @@ def send_discord(item, reason):
         print(r.text[:300])
 
     time.sleep(1.5)
-
+    
 def main():
     if not WEBHOOK_URL:
         print("DISCORD_WEBHOOK missing")
