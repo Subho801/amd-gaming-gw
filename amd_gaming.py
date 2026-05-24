@@ -13,7 +13,7 @@ WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK")
 # Example value: <@&123456789012345678>
 ROLE_PING = os.getenv("ROLE_PING", "").strip()
 
-AMD_LOGO = "https://files.catbox.moe/scvfz0.jpg"
+AMD_LOGO = "https://files.catbox.moe/pewooo.png"
 FOOTER_TEXT = "Subho's AMD Gaming Notifier"
 
 
