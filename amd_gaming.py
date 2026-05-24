@@ -3,7 +3,7 @@ import json
 import requests
 from datetime import datetime, timezone
 
-API_URL = "https://www.amdgaming.com/api/promotions"
+API_URL = "https://www.amdgaming.com/promotions"
 
 WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK")
 SEEN_FILE = "seen_amd.json"
@@ -24,43 +24,64 @@ def save_seen(seen):
 
 
 def discord_timestamp(unix_time):
-    return f"<t:{unix_time}:F>"
+    try:
+        return f"<t:{int(unix_time)}:F>"
+    except:
+        return "Unknown"
 
 
 def get_promotions():
     headers = {
         "User-Agent": "Mozilla/5.0",
-        "Accept": "application/json"
+        "Accept": "application/json, text/javascript, */*; q=0.01",
+        "X-Requested-With": "XMLHttpRequest"
     }
 
     r = requests.get(API_URL, headers=headers, timeout=30)
+
     print("API:", r.status_code)
 
     if r.status_code != 200:
+        print(r.text[:500])
         return []
 
-    data = r.json()
+    try:
+        data = r.json()
+    except Exception as e:
+        print("JSON parse failed:", e)
+        print(r.text[:500])
+        return []
 
     return data.get("items", [])
+
+
+def get_status(item):
+    status = str(item.get("status", "")).lower()
+    keys = item.get("keysAvailable", 0)
+
+    if status == "active" and keys > 0:
+        return "🟢 AVAILABLE", 0x00ff99
+
+    if status == "active" and keys == 0:
+        return "🟠 OUT OF KEYS", 0xffaa00
+
+    return "🔴 ENDED", 0xff4444
 
 
 def send_discord(item):
     title = item.get("title", "Unknown Giveaway")
     slug = item.get("slug", "")
     image = item.get("thumbnailImageUrl")
-    status = item.get("status", "unknown").lower()
     platform = item.get("platform", "Unknown")
+    developer = item.get("developer", "Unknown")
     keys = item.get("keysAvailable", 0)
     created = item.get("createdAt", 0)
+    updated = item.get("updatedAt", 0)
+    tags = item.get("tags", "")
 
     url = f"https://www.amdgaming.com/promotions/{slug}"
 
-    if status == "active":
-        status_text = "🟢 AVAILABLE"
-        color = 0x00ff99
-    else:
-        status_text = "🔴 ENDED"
-        color = 0xff4444
+    status_text, color = get_status(item)
 
     embed = {
         "author": {
@@ -87,9 +108,19 @@ def send_discord(item):
                 "inline": True
             },
             {
+                "name": "Developer",
+                "value": developer,
+                "inline": True
+            },
+            {
                 "name": "Published",
                 "value": discord_timestamp(created),
-                "inline": False
+                "inline": True
+            },
+            {
+                "name": "Updated",
+                "value": discord_timestamp(updated),
+                "inline": True
             }
         ],
         "footer": {
@@ -100,17 +131,30 @@ def send_discord(item):
     }
 
     if image:
-        embed["image"] = {"url": image}
+        embed["image"] = {
+            "url": image
+        }
+
+    if tags:
+        embed["description"] = f"🏷️ `{tags}`"
 
     payload = {
         "embeds": [embed]
     }
 
-    r = requests.post(WEBHOOK_URL, json=payload)
+    r = requests.post(WEBHOOK_URL, json=payload, timeout=30)
+
     print("Discord:", r.status_code)
+
+    if r.text:
+        print(r.text[:300])
 
 
 def main():
+    if not WEBHOOK_URL:
+        print("DISCORD_WEBHOOK missing")
+        return
+
     seen = load_seen()
 
     items = get_promotions()
