@@ -123,12 +123,12 @@ def send_discord(item, reason):
             },
             {
                 "name": "Platform",
-                "value": platform,
+                "value": "<:steam:YOUR_EMOJI_ID> Steam",
                 "inline": True
             },
             {
                 "name": "Keys",
-                "value": str(keys),
+                "value": f"🔑 {keys}",
                 "inline": True
             }
         ],
