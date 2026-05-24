@@ -123,7 +123,7 @@ def send_discord(item, reason):
             },
             {
                 "name": "Platform",
-                "value": "<:steam:YOUR_EMOJI_ID> Steam",
+                "value": "<:steam:1507952494657929246> Steam",
                 "inline": True
             },
             {
